@@ -159,7 +159,11 @@ def refresh():
     new_finals = merge_and_train(state, fixtures)
     save_state(state)
     log.info("Refresh OK — %s partidos nuevos entrenados", new_finals)
-    return {"ok": True, "new_finals": new_finals}
+    return {
+        "ok": True,
+        "new_finals": new_finals,
+        "diagnostic": data_provider.LAST_FETCH_DIAGNOSTIC,
+    }
 
 
 scheduler = BackgroundScheduler()
@@ -204,3 +208,4 @@ def reset():
     state = engine.fresh_state(SEED_MATCHES)
     save_state(state)
     return {"ok": True}
+
