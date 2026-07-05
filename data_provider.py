@@ -59,14 +59,24 @@ def fetch_fixtures():
     )
     resp.raise_for_status()
     data = resp.json()
+
+    # API-Football a veces responde HTTP 200 pero con un error adentro
+    # (ej: cuota diaria agotada) -- si no revisamos esto, parece que
+    # "no hay partidos nuevos" cuando en realidad la consulta falló.
+    errors = data.get("errors")
+    if errors:
+        raise RuntimeError(f"La API devolvió un error: {errors}")
+
+    raw_response = data.get("response", [])
     fixtures = []
-    for item in data.get("response", []):
+    unmapped = set()
+    for item in raw_response:
         home_name = item["teams"]["home"]["name"]
         away_name = item["teams"]["away"]["name"]
         home_code = TEAM_NAME_TO_CODE.get(home_name)
         away_code = TEAM_NAME_TO_CODE.get(away_name)
         if not home_code or not away_code:
-            # Equipo sin mapear -- se omite, revisa TEAM_NAME_TO_CODE
+            unmapped.add(f"{home_name} vs {away_name}")
             continue
         status_short = item["fixture"]["status"]["short"]
         fixtures.append({
@@ -79,7 +89,13 @@ def fetch_fixtures():
             "date": item["fixture"]["date"],
             "round_raw": item["league"]["round"],
         })
+    LAST_FETCH_DIAGNOSTIC["total_raw"] = len(raw_response)
+    LAST_FETCH_DIAGNOSTIC["mapped"] = len(fixtures)
+    LAST_FETCH_DIAGNOSTIC["unmapped_examples"] = sorted(unmapped)[:15]
     return fixtures
+
+
+LAST_FETCH_DIAGNOSTIC = {"total_raw": None, "mapped": None, "unmapped_examples": []}
 
 
 def fetch_xg(api_id: int):
@@ -136,3 +152,4 @@ def fetch_lineups_confirmed(api_id: int) -> bool:
         return len(data) >= 2
     except Exception:
         return False
+
