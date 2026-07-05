@@ -152,4 +152,3 @@ def fetch_lineups_confirmed(api_id: int) -> bool:
         return len(data) >= 2
     except Exception:
         return False
-
